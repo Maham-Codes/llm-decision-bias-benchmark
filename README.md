@@ -1,74 +1,46 @@
 # LLM Decision-Advisor Bias & Agent Benchmark
 
-**A pilot benchmark for stress-testing LLMs as decision advisors — measuring framing
-sensitivity, advice invariance, and whether multi-agent protocols improve decision
-reliability.**
+**A pilot benchmark for stress-testing LLMs as decision advisors: measuring framing
+sensitivity, advice invariance, and whether multi-agent protocols reduce decision risk.**
 
-This notebook is a small-scale, working proof of concept for the kind of pipeline
-described in Mitacs Globalink project *"Can AI Managers Be Trusted? Stress-Testing LLM
-Advisors for Bias, Invariance, and Decision Risk"* (Mohamed Drira, St. Mary's
-University). It tests whether an LLM's advice on a canonical managerial decision task —
-allocating a fixed budget across competing projects — changes depending on how the
-question is *worded* despite being economically identical, and whether routing the
-question through a simple multi-agent protocol (two independent advisors + one
-aggregator, i.e. a structured "independent second opinion" step) improves or degrades
-that reliability.
+LLMs are increasingly used as advisors that recommend and justify decisions in business,
+operations, and financial contexts, but it's not obvious whether that advice reflects
+the actual economics of a decision or just the way the question happened to be phrased.
+This project builds a small Python benchmark to test that directly: it takes a canonical
+managerial decision task (allocating a fixed budget across competing projects), asks an
+LLM to solve it under several economically identical but differently worded framings, and
+measures how much the advice moves. It then tests whether a lightweight multi-agent
+protocol — independent second opinions reconciled by an aggregator — makes the advice
+more reliable, or just adds noise.
 
-## Relevance to the Mitacs project brief
+## What this covers
 
-The project brief asks for four phases: (1) literature review on LLM evaluation and
-decision bias, (2) equivalent decision scenarios + a Python pipeline to query LLMs via
-API, (3) extracting structured outputs and computing framing-sensitivity / advice-invariance
-metrics, (4) testing whether multi-agent protocols (independent second opinions,
-aggregation) improve reliability. This notebook is a working, if small-scale,
-implementation of phases 2–4:
+- **Equivalent decision scenarios varying only in framing** — 5 economically identical
+  framings of a $10,000 allocation task across three fictional projects (Marketing, R&D,
+  Operations): `neutral`, `loss_framed` (emphasizes risk of underfunding), `gain_framed`
+  (emphasizes maximizing success), `authority_framed` (model told to act as CFO and
+  justify the decision), and `order_reversed` (same task, projects listed in reverse
+  order, to test position bias). Each framing is run several times to separate genuine
+  framing effects from ordinary sampling noise.
+- **A Python pipeline for querying LLMs via API** — `query_advisor()` calls the Gemini
+  API with a Pydantic-enforced JSON schema so every response is directly comparable.
+- **Structured, comparable outputs** — every response is forced into an `Allocation`
+  schema (three dollar amounts + rationale) instead of parsed from free text.
+- **Framing-sensitivity / advice-invariance metrics** — within-framing standard deviation
+  (noise from repeating the same framing), between-framing standard deviation (how much
+  the average allocation moves across framings — the actual bias signal), an "invariance
+  ratio" (between ÷ within), one-way ANOVA per project to check statistical significance,
+  and cosine similarity between framings' mean allocation vectors.
+- **A multi-agent protocol test** — two independently sampled advisor calls reconciled
+  by a third aggregator call ("independent second opinions" + aggregation), with the
+  same invariance metrics recomputed on the aggregated output to see whether it reduces
+  decision risk relative to a single call.
 
-| Brief asks for | This notebook does |
-|---|---|
-| Equivalent decision scenarios varying only in framing | 5 economically identical framings of a $10,000 allocation task (neutral, loss-framed, gain-framed, authority-framed, order-reversed) |
-| Python pipeline querying LLMs via API | `query_advisor()` calling the Gemini API with a Pydantic-enforced JSON schema |
-| Structured, comparable outputs | Every response is forced into an `Allocation` schema (three dollar amounts + rationale) instead of parsed from free text |
-| Framing-sensitivity / advice-invariance metrics | Within- vs. between-framing standard deviation, an "invariance ratio," one-way ANOVA, and cosine similarity between framings' mean allocation vectors |
-| Multi-agent protocols (independent second opinions + aggregation) | Two independently sampled advisor calls reconciled by a third aggregator call, with the same invariance metrics recomputed on the aggregated output |
-
-What it doesn't cover yet, and what a full Mitacs-scale version would need to add:
-a decision task with an analytically derivable optimum (so "decision quality" and
-"regret" can be measured, not just consistency), a second model family to test whether
-bias is model-specific or general, a larger `N_REPEATS`, and a literature review tying
-the framing effects observed here to the psychology/behavioral-economics literature on
-loss aversion, anchoring, and framing effects.
-
-## The idea
-
-The model is given the same underlying decision five times, each phrased differently:
-
-| Framing | What changes |
-|---|---|
-| `neutral` | Plain instructions, no framing |
-| `loss_framed` | Emphasizes the risk of underfunding |
-| `gain_framed` | Emphasizes maximizing success |
-| `authority_framed` | Model is told to act as CFO and justify the decision |
-| `order_reversed` | Same task, projects listed in reverse order (tests position bias) |
-
-Every framing asks the model to split **$10,000** across three fictional projects
-(Marketing, R&D, Operations) and return a structured JSON allocation. Each framing is run
-several times to separate genuine framing effects from ordinary sampling noise, and the
-whole thing is repeated through a lightweight multi-agent setup (two independently
-sampled "advisors" reconciled by a third "aggregator" call) to see whether that reduces
-the framing sensitivity.
-
-## What it measures
-
-- **Within-framing std** — noise from repeating the *same* framing multiple times.
-- **Between-framing std** — how much the *average* allocation moves across framings
-  (the actual bias signal).
-- **Invariance ratio** (between ÷ within) — near 0 means framing barely matters; large
-  means framing dominates the answer.
-- **One-way ANOVA** on each project's allocation across framings, to check statistical
-  significance.
-- **Cosine similarity** between each pair of framings' mean allocation vectors.
-- The same metrics recomputed on the multi-agent aggregator's output, for a direct
-  single-agent vs. multi-agent comparison.
+What it doesn't cover yet, and what a more thorough version would need to add: a decision
+task with an analytically derivable optimum (so decision quality and regret can be
+measured, not just consistency), a second model family to test whether bias is
+model-specific or general, a larger `N_REPEATS`, and a proper literature tie-in to the
+behavioral-economics work on loss aversion, anchoring, and framing effects.
 
 ## Repo contents
 
@@ -123,8 +95,7 @@ rate limit, so it's a suggestive result, not a settled one. See
   outputs above) — for a clean run, use a paid tier or raise `SLEEP_SECONDS`.
 - No ground-truth optimum is defined for the allocation task, so this pilot only measures
   *consistency* (invariance across framings), not *decision quality* or *regret* relative
-  to an optimal allocation — a natural next step, and one the full project brief
-  specifically calls for.
+  to an optimal allocation — a natural next step.
 - To strengthen the study: increase `N_REPEATS`, add a second model family (OpenAI or
   Claude, using the same `Allocation` schema) to see whether the bias is Gemini-specific
   or general to LLMs, add a decision task with an analytically derivable optimum, and
