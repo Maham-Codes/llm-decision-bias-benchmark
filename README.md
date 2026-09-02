@@ -10,7 +10,7 @@ This project builds a small Python benchmark to test that directly: it takes a c
 managerial decision task (allocating a fixed budget across competing projects), asks an
 LLM to solve it under several economically identical but differently worded framings, and
 measures how much the advice moves. It then tests whether a lightweight multi-agent
-protocol — independent second opinions reconciled by an aggregator — makes the advice
+protocol, independent second opinions reconciled by an aggregator, makes the advice
 more reliable, or just adds noise.
 
 ## What this covers
@@ -102,6 +102,4 @@ rate limit, so it's a suggestive result, not a settled one. See
   extend the multi-agent protocol to include structured critique-and-revision, not just
   independent-advisors-plus-aggregation.
 
-## License
 
-MIT — see [LICENSE](LICENSE).
