@@ -1,0 +1,12 @@
+# Secrets
+.env
+*api_key*
+
+# Notebook / Python
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# Run outputs (regenerate by re-running the notebook)
+single_agent_results.csv
+multi_agent_results.csv
